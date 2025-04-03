@@ -9,9 +9,15 @@ import os
 from pytubefix import YouTube
 from pytubefix.cli import on_progress
 
-from settings import get_downloads_path
+from settings import get_downloads_path, get_data_path
 
-# import whisper
+try:
+    print("Initializing...")
+    import whisper
+except ImportError:
+    raise ImportError(
+        "Whisper is not installed. Please install it using 'pip install whisper'."
+    )
 
 
 def get_video_from_url():
@@ -32,7 +38,7 @@ def get_video_from_url():
         menu()
 
 
-def transcribe_audio():
+def get_audio_file():
     audio_files = [
         audio_file
         for audio_file in os.listdir(get_downloads_path())
@@ -51,13 +57,35 @@ def transcribe_audio():
     try:
         file_index = int(input("\nEnter the number of the audio file: ")) - 1
         if 0 <= file_index < len(audio_files):
-            selected_file = os.path.join(get_downloads_path(), audio_files[file_index])
+            audio_file_path = os.path.join(
+                get_downloads_path(), audio_files[file_index]
+            )
+            transcribe_audio(audio_file_path)
         else:
             print("Invalid choice.")
-            return  # Exit function if the choice is invalid
+            return
     except ValueError:
         print("Invalid input. Please enter a number.")
         return
+
+
+def transcribe_audio(audio_file_path):
+    # Load the Model
+    model = whisper.load_model("medium")
+
+    print(f"\nTranscribing: {audio_file_path}...\n")
+    try:
+        result = model.transcribe(audio_file_path)
+        transcription_text = result["text"]
+
+        file_name = os.path.splitext(os.path.basename(audio_file_path))[0] + ".txt"
+        save_path = os.path.join(get_data_path(), file_name)
+
+        with open(save_path, "w", encoding="utf-8") as f:
+            f.write(transcription_text)
+        print(f"Transcription saved to: {save_path}")
+    except:
+        print("Error transcribing audio, check audio file and try again")
 
 
 def menu():
@@ -68,7 +96,7 @@ def menu():
     if choice == "1":
         get_video_from_url()
     elif choice == "2":
-        transcribe_audio()
+        get_audio_file()
     else:
         print("Invalid choice")
 
